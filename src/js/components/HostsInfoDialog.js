@@ -38,6 +38,8 @@ class HostsInfoDialog extends Component {
                                 !name ?
                                 Lang.get('main.create_new_hosts') :
                                 Lang.get('main.edit_hosts') }</span>
+                            <span><input type="radio" value="hosts" name="addType">hosts</input></span>
+                            <span><input type="radio" value="group" name="addType">group</input></span>
                             <i className="iconfont close" onClick={ onDismiss }>&#xe602;</i>
                         </div>
                         <div className="vertical-inputs">

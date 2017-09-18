@@ -28,6 +28,7 @@
     "babel-preset-react": "^6.3.13",
     "classnames": "^2.2.1",
     "codemirror": "^5.10.0",
+    "electron": "^1.7.5",
     "electron-packager": "^5.2.0",
     "electron-prebuilt": "^0.36.0",
     "gulp": "^3.9.0",
@@ -36,7 +37,6 @@
     "gulp-sass": "^2.1.1",
     "gulp-util": "^3.0.7",
     "json-loader": "^0.5.4",
-    "svg-sprite-loader": "0.0.18",
     "jszip": "^2.5.0",
     "keymirror": "^0.1.1",
     "mkdirp": "^0.5.1",
@@ -47,6 +47,7 @@
     "react-dragula": "^1.1.9",
     "react-dropzone": "^3.3.0",
     "react-select": "^1.0.0-beta8",
+    "svg-sprite-loader": "0.0.18",
     "uid": "0.0.2",
     "webpack": "^1.12.9"
   },

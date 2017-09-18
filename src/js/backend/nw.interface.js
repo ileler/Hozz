@@ -40,9 +40,9 @@ const focusCurrentWindow = () => {
 const setDockIconVisibility = () => {
     const windows = BrowserWindow.getAllWindows();
     if (windows.some(win => win.isVisible())) {
-        app.dock.show();
+        app.dock && app.dock.show();
     } else {
-        app.dock.hide();
+        app.dock && app.dock.hide();
     }
 }
 

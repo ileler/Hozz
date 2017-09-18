@@ -116,11 +116,11 @@ app.on('ready', function () {
         width: 960,
         height: 640,
         frame: false,
-        transparent: true,
+        // transparent: true,
         icon: path.join(__dirname, './assets/images/icon.png'),
     });
     mainWindow.loadURL('file://' + __dirname + '/index.html');
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
     mainWindow.on('close', function(e) {
         if (!shouldQuit) {
             e.preventDefault();
@@ -134,9 +134,11 @@ app.on('ready', function () {
     settingsWindow = new BrowserWindow({
         width: 600,
         height: 480,
+        modal: true,
         frame: false,
+        parent: mainWindow,
         resizable: false,
-        transparent: true,
+        // transparent: true,
         icon: path.join(__dirname, './assets/images/icon.png'),
     });
     settingsWindow.loadURL('file://' + __dirname + '/settings.html');
