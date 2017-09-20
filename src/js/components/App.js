@@ -13,13 +13,13 @@ import log from '../backend/log';
 import event from '../backend/event';
 import Hosts from '../backend/hosts';
 import Lang from '../backend/language';
-import nw from '../backend/nw.interface';
 import permission from '../backend/permission';
 
 import Editor from './Editor';
 import Sidebar from './Sidebar';
 import Titlebar from './Titlebar';
 import SnackBar from './SnackBar';
+import HostsGroup from "../backend/hostsGroup";
 
 const getPosition = (element) => {
     return Array.prototype.slice.call(element.parentElement.children).indexOf(element);
@@ -34,7 +34,9 @@ class App extends Component {
             snack: null,
             manifest: null,
             activeUid: TOTAL_HOSTS_UID,
+            activeGroupId: null,
             editingUid: null,
+            editingGroupId: null,
             syncingUid: null,
             searchText: '',
         }
@@ -43,7 +45,11 @@ class App extends Component {
     componentDidMount () {
         const { manifest } = this.props;
         const updateRemoteHosts = manifest.getHostsList().map((hosts) => {
-            return hosts.updateFromUrl().then(() => {
+            return hosts.getChildren ? hosts.getChildren().map((child) => {
+                return child.updateFromUrl().then(() => {
+                    this.__updateManifest(manifest);
+                });
+            }) : hosts.updateFromUrl().then(() => {
                 this.__updateManifest(manifest);
             });
         });
@@ -89,31 +95,59 @@ class App extends Component {
             type: 'checkbox',
             checked: this.totalHosts.online,
             click: () => {
-                manifest.online = !manifest.online;
-                manifest.commit();
-                this.__updateManifest(manifest);
+                this.__onHostsStatusChange({uid: TOTAL_HOSTS_UID});
             }
         });
         for (let hosts of manifest.getHostsList()) {
-            menus.push({
-                label: hosts.name,
-                type: 'checkbox',
-                checked: hosts.online,
-                click: () => {
-                    if (manifest.online) {
-                        hosts.toggleStatus();
-                        manifest.commit();
+            let subMenu = null;
+            if (hosts.getChildren) {
+                subMenu = [];
+                hosts.getChildren().forEach((child) => {
+                    subMenu.push({
+                        label: child.name,
+                        checked: child.online,
+                        type: 'checkbox',
+                        click: () => {
+                            this.__onHostsStatusChange(child);
+                        }
+                    });
+                });
+            }
+            if (subMenu) {
+                menus.push({
+                    label: hosts.name,
+                    type: 'submenu',
+                    submenu: [
+                        {
+                            label: hosts.name,
+                            type: 'checkbox',
+                            checked: hosts.online,
+                            click: () => {
+                                this.__onHostsStatusChange(hosts);
+                            }
+                        },
+                        { type: 'separator' },
+                        ...subMenu
+                    ]
+                });
+            } else {
+                menus.push({
+                    label: hosts.name,
+                    type: 'checkbox',
+                    checked: hosts.online,
+                    submenu: subMenu,
+                    click: () => {
+                        this.__onHostsStatusChange(hosts);
                     }
-                    this.__updateManifest(manifest);
-                }
-            });
+                });
+            }
         }
         event.emit(EVENT.SET_HOSTS_MENU, menus);
     }
 
-    __updateHosts (uid, text) {
+    __updateHosts (groupId, uid, text) {
         const { manifest } = this.state;
-        const hosts = manifest.getHostsByUid(uid);
+        const hosts = manifest.getHostsByUid(uid, groupId);
         if (uid !== TOTAL_HOSTS_UID && hosts) {
             hosts.setText(text);
             hosts.save();
@@ -124,16 +158,27 @@ class App extends Component {
 
     __onHostsClick (item, e) {
         e && e.stopPropagation && e.stopPropagation();
-        this.setState({ activeUid: item.uid });
+        if (item.getChildren) {
+            const child = item.getActiveChild();
+            this.setState({ activeUid: child ? child.uid : item.uid, activeGroupId: item.groupId });
+        } else {
+            this.setState({ activeUid: item.uid, activeGroupId: item.groupId });
+        }
     }
 
     __onHostsRemove (item, e) {
         e && e.stopPropagation && e.stopPropagation();
         const { manifest } = this.state;
-        manifest.removeHosts(item).commit();
-        item.remove().then(() => {
-            this.__updateManifest(manifest);
-        });
+        if (item.getChildren) {
+            item.getChildren().forEach((hosts, index) => {
+                this.__onHostsRemove(hosts);
+            });
+        } else {
+            item.remove().then(() => {
+                this.__updateManifest(manifest);
+            });
+        }
+        manifest.removeHosts(item, item.groupId).commit();
     }
 
     __onHostsStatusChange (item, e) {
@@ -141,7 +186,29 @@ class App extends Component {
         const { manifest } = this.state;
         if (item.uid !== TOTAL_HOSTS_UID) {
             if (manifest.online) {
-                manifest.getHostsByUid(item.uid).toggleStatus();
+                if (item.groupId) {
+                    let hosts = manifest.getHostsByUid(item.uid, item.groupId);
+                    if (!(hosts.online)) {
+                        manifest.getHostsByUid(item.groupId).getChildren().forEach((child) => {
+                            child.online = false;
+                        });
+                        manifest.getHostsByUid(item.uid, item.groupId).toggleStatus();
+                        manifest.getHostsByUid(item.groupId).activationHostsId = item.uid;
+                    }
+                    manifest.getHostsByUid(item.groupId).online = true;
+                } else {
+                    let hosts = manifest.getHostsByUid(item.uid);
+                    hosts.toggleStatus();
+                    if (hosts.getChildren) {
+                        hosts.getChildren().forEach((child) => {
+                            child.online = false;
+                        });
+                        let active = hosts.getActiveChild();
+                        if (active && hosts.online) {
+                            active.toggleStatus();
+                        }
+                    }
+                }
                 manifest.commit();
                 this.__updateManifest(manifest);
             }
@@ -154,41 +221,56 @@ class App extends Component {
 
     __createNewHosts (options) {
         const { manifest } = this.state;
-        if (options && options.name) {
-            const hosts = new Hosts(options);
-            if (hosts.url) {
-                hosts.updateFromUrl().then(() => {
-                    this.__updateManifest(manifest);
-                });
-            } else {
-                hosts.save();
+        if (options && options.name && options.type) {
+            const hosts = options.type == 'group' ? new HostsGroup(options) : new Hosts(options);
+            if (options.type != 'group') {
+                if (hosts.url) {
+                    hosts.updateFromUrl().then(() => {
+                        this.__updateManifest(manifest);
+                    });
+                } else {
+                    hosts.save();
+                }
             }
-            manifest.addHosts(hosts).commit();
+            manifest.addHosts(hosts, hosts.groupId).commit();
             this.__updateManifest(manifest);
         }
     }
 
-    __onUpdateHostsClick (nextHosts) {
+    __onUpdateHostsClick (nextHosts, oldGroupId) {
         const { manifest } = this.state;
         if (nextHosts && nextHosts.name) {
-            if (nextHosts.url) {
-                nextHosts.updateFromUrl().then(() => {
-                    this.__updateManifest(manifest);
-                });
-            } else {
-                nextHosts.save();
+            if (nextHosts.type != 'group') {
+                if (nextHosts.url) {
+                    nextHosts.updateFromUrl().then(() => {
+                        this.__updateManifest(manifest);
+                    });
+                } else {
+                    nextHosts.save();
+                }
             }
-            manifest.setHostsByUid(nextHosts.uid, nextHosts);
+            if (oldGroupId && nextHosts && nextHosts.groupId && oldGroupId != nextHosts.groupId) {
+                manifest.removeHosts(nextHosts, oldGroupId);
+                if (nextHosts.online) {
+                    let newActive = manifest.getHostsByUid(oldGroupId).getActiveChild();
+                    if (newActive) newActive.toggleStatus();
+                    nextHosts.online = false;
+                }
+                manifest.addHosts(nextHosts, nextHosts.groupId);
+            } else {
+                manifest.setHostsByUid(nextHosts.groupId, nextHosts.uid, nextHosts);
+            }
             manifest.commit();
             this.__updateManifest(manifest);
         }
-        this.setState({ editingUid: null });
+        this.setState({ editingUid: null, editingGroupId: null });
     }
 
     __onHostsEdit (hosts, e) {
         e && e.stopPropagation && e.stopPropagation();
-        this.setState({ editingUid: hosts.uid });
+        this.setState({ editingUid: hosts.uid, editingGroupId: hosts.groupId });
     }
+
     __onHostsSync (hosts, e) {
         e && e.stopPropagation && e.stopPropagation();
         this.__onUpdateHostsClick(hosts);
@@ -252,8 +334,9 @@ class App extends Component {
     }
 
     render() {
-        const { snack, manifest, activeUid, editingUid, syncingUid, searchText } = this.state;
+        const { snack, manifest, activeUid, activeGroupId, editingUid, editingGroupId, syncingUid, searchText } = this.state;
         let list = manifest ? manifest.getHostsList() : [];
+        let groupList = manifest ? manifest.getHostsGroupList() : [];
         if (searchText) {
             list = list.filter((hosts) => {
                 return hosts.name.indexOf(searchText) > -1 || hosts.text.indexOf(searchText) > -1;
@@ -262,17 +345,17 @@ class App extends Component {
         let activeHosts = null;
         if (activeUid !== null) {
             if (activeUid !== TOTAL_HOSTS_UID) {
-                activeHosts = manifest.getHostsByUid(activeUid);
+                activeHosts = manifest.getHostsByUid(activeUid, activeGroupId);
             } else {
                 activeHosts = this.totalHosts;
             }
         }
         let editingHosts = null;
         if (editingUid !== null) {
-            editingHosts = manifest.getHostsByUid(editingUid);
+            editingHosts = manifest.getHostsByUid(editingUid, editingGroupId);
         }
         let readOnly = false;
-        if (activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || activeHosts.url)) {
+        if (activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || activeHosts.url || activeHosts.getChildren)) {
             readOnly = true;
         } else {
             readOnly = false;
@@ -286,6 +369,7 @@ class App extends Component {
                         <div>
                             <Sidebar
                                 list={ list }
+                                groupList={ groupList }
                                 activeUid={ activeUid }
                                 totalHosts={ this.totalHosts }
                                 editingHosts={ editingHosts }
@@ -316,7 +400,7 @@ class App extends Component {
                                 key={ activeUid }
                                 readOnly={ readOnly }
                                 value={ activeHosts.text }
-                                onTextShouldUpdate={ this.__updateHosts.bind(this) } /> : null }
+                                onTextShouldUpdate={ this.__updateHosts.bind(this, activeGroupId) } /> : null }
                     </div>
                 </div>);
     }

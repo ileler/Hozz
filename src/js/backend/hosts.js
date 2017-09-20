@@ -18,7 +18,7 @@ const countRules = (text) => {
 
 class Hosts {
     constructor (options) {
-        const { index, uid, name, online, url, count, text } = options;
+        const { index, uid, name, online, url, count, text, groupId } = options;
         this.index = index || 0;
         this.uid = uid || UID(16);
         this.name = name || '';
@@ -30,6 +30,7 @@ class Hosts {
         } else {
             this.setText(text || '');
         }
+        this.groupId = groupId;
         this.isSyncing = false;
     }
 
@@ -42,6 +43,7 @@ class Hosts {
             index:  this.index,
             online: this.online,
             count:  this.count,
+            groupId: this.groupId
         };
     }
 
@@ -108,6 +110,10 @@ class Hosts {
         } else {
             return Promise.resolve();
         }
+    }
+
+    counter() {
+        return countRules(this.text||'');
     }
 }
 

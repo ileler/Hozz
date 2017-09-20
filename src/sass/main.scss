@@ -155,12 +155,15 @@ button {
         }
     }
 }
+.group-sidebar-item,
 .sidebar-item {
     color: $text-light;
     padding: 10px 15px;
     position: relative;
     &:hover {
         background-color: rgba(255, 255, 255, 0.05);
+        .group-edit,
+        .group-delete,
         .sync,
         .edit,
         .delete {
@@ -180,6 +183,9 @@ button {
     &.gu-transit {
         background-color: darken($background-dark, 10%);
     }
+    .group-status,
+    .group-edit,
+    .group-delete,
     .sync,
     .edit,
     .status,
@@ -188,6 +194,7 @@ button {
         cursor: pointer;
         position: absolute;
     }
+    .group-status,
     .status {
         width: 12px;
         height: 12px;
@@ -225,6 +232,8 @@ button {
             }
         }
     }
+    .group-edit,
+    .group-delete,
     .sync,
     .edit,
     .delete {
@@ -237,11 +246,21 @@ button {
     .sync {
         right: 55px;
     }
+    .group-edit,
     .edit {
         right: 35px;
     }
+    .group-delete,
     .delete {
         right: 15px;
+    }
+    .groupItem {
+        .group-status,
+        .group-edit,
+        .group-delete {
+            top: 23px;
+            margin-top: 0px;
+        }
     }
 }
 .Icon {
@@ -441,6 +460,7 @@ button {
         background-color: white;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         .vertical-inputs {
+            select,
             input[type="text"] {
                 width: 100%;
                 padding: 8px;

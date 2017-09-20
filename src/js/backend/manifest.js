@@ -1,3 +1,5 @@
+import HostsGroup from "./hostsGroup";
+
 const path = require('path');
 const mkdirp = require('mkdirp');
 
@@ -33,7 +35,7 @@ class Manifest {
         } else if (Array.isArray(hosts)) {
             this.hosts = new Map();
             hosts.forEach((hostsObj) => {
-                const __hosts = new Hosts(hostsObj);
+                const __hosts = hostsObj.hasOwnProperty("hostsArray") ? new HostsGroup(hostsObj) : new Hosts(hostsObj);
                 this.hosts.set(__hosts.uid, __hosts);
             });
         }
@@ -41,17 +43,25 @@ class Manifest {
         this.language = typeof(language) === 'undefined' ? navigator.language : language;
     }
 
-    getHostsByUid (uid) {
-        return this.hosts.get(uid);
+    getHostsByUid (uid, groupId) {
+        return !uid ? null : (groupId ? this.hosts.get(groupId).get(uid) : this.hosts.get(uid));
     }
 
-    setHostsByUid (uid, hosts) {
-        return this.hosts.set(uid, hosts);
+    setHostsByUid (groupId, uid, hosts) {
+        return !uid ? null : (groupId ? this.hosts.get(groupId).set(uid, hosts) : this.hosts.set(uid, hosts));
     }
 
     getHostsList () {
         return Array.from(this.hosts.values()).sort((A, B) => {
             return (A.index | 0) - (B.index | 0);
+        });
+    }
+
+    getHostsGroupList () {
+        return this.getHostsList().map((hosts) => {
+            return hosts.getChildren ? {key: hosts.uid, value: hosts.name} : null;
+        }).filter((hosts) => {
+            return hosts;
         });
     }
 
@@ -61,15 +71,26 @@ class Manifest {
         });
     }
 
-    addHosts (hosts) {
+    addHosts (hosts, groupId) {
         this.sortHosts();
-        hosts.index = this.getHostsList().length;
-        this.hosts.set(hosts.uid, hosts);
+        if (groupId) {
+            const group = this.getHostsByUid(groupId);
+            hosts.index = group.getChildren().length;
+            group.add(hosts);
+        } else {
+            hosts.index = this.getHostsList().length;
+            this.hosts.set(hosts.uid, hosts);
+        }
         return this;
     }
 
-    removeHosts (hosts) {
-        this.hosts.delete(hosts.uid);
+    removeHosts (hosts, groupId) {
+        if (groupId) {
+            const group = this.getHostsByUid(groupId);
+            if (group) group.del(hosts.uid);
+        } else {
+            this.hosts.delete(hosts.uid);
+        }
         this.sortHosts();
         return this;
     }
@@ -93,12 +114,27 @@ class Manifest {
         for (let hosts of this.getHostsList()) {
             if (!this.online) {
                 hosts.stashStatus();
+                if (hosts.getChildren) {
+                    hosts.getChildren().forEach((child) => {
+                        child.stashStatus();
+                    });
+                }
             } else {
                 hosts.popStatus();
+                if (hosts.getChildren) {
+                    hosts.getChildren().forEach((child) => {
+                        child.popStatus();
+                    });
+                }
             }
             if (hosts.online) {
-                totalHostsText += hosts.text + '\n';
-                totalCount += hosts.count;
+                let temp = hosts;
+                if (hosts.getChildren) {
+                    temp = hosts.getActiveChild();
+                    if (!temp)     continue;
+                }
+                totalHostsText += temp.text + '\n';
+                totalCount += temp.count;
             }
         }
         return new Hosts({
@@ -110,15 +146,27 @@ class Manifest {
         });
     }
 
+    hostsToObject(hosts) {
+        const __hosts = hosts.toObject();
+        delete __hosts.text;
+        if (typeof(hosts.__online) !== 'undefined') {
+            __hosts.online = hosts.__online;
+        }
+        return __hosts;
+    }
+
     toSimpleObject () {
         const __manifest = Object.assign({}, this);
         const simpleHosts = this.getHostsList().map((hosts) => {
-            const __hosts = hosts.toObject();
-            delete __hosts.text;
-            if (typeof(hosts.__online) !== 'undefined') {
-                __hosts.online = hosts.__online;
+            if (hosts.getChildren) {
+                const __hosts = hosts.toObject();
+                __hosts.hostsArray = hosts.getChildren().map((child) => {
+                    return this.hostsToObject(child);
+                }) || [];
+                return __hosts;
+            } else {
+                return this.hostsToObject(hosts);
             }
-            return __hosts;
         });
         __manifest.hosts = simpleHosts;
         return __manifest;
@@ -166,9 +214,11 @@ Manifest.loadFromDisk = () => {
         const hostsMap = new Map();
         if (Array.isArray(hosts)) {
             const hostsPromises = hosts.map((item) => {
-                const __hosts = new Hosts(item);
+                const __hosts = item.hasOwnProperty("hostsArray") ? new HostsGroup(item) : new Hosts(item);
                 hostsMap.set(__hosts.uid, __hosts);
-                return __hosts.load();
+                return __hosts.getChildren ? Promise.all(__hosts.getChildren().map((child) => {
+                    return child.load();
+                })) : __hosts.load();
             });
             return Promise.all(hostsPromises).then(() => {
                 manifest.hosts = hostsMap;

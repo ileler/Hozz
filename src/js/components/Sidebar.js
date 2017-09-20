@@ -5,6 +5,7 @@ import { EVENT, TOTAL_HOSTS_UID } from '../constants';
 
 import SearchBox from './SearchBox';
 import SidebarItem from './SidebarItem';
+import SidebarGroupItem from './SidebarGroupItem';
 import HostsInfoDialog from './HostsInfoDialog';
 
 class Sidebar extends Component {
@@ -13,7 +14,7 @@ class Sidebar extends Component {
         this.state = {
             isAddingHosts: false,
             isEditingHosts: false,
-            nextHosts: { name: '', url: '' },
+            nextHosts: { type: '', name: '', url: '', groupId: '', oldGroupId: '' },
         }
     }
 
@@ -24,16 +25,19 @@ class Sidebar extends Component {
             this.setState({
                 isEditingHosts: true,
                 nextHosts: {
+                    type: editingHosts.type,
                     url: editingHosts.url,
                     name: editingHosts.name,
+                    groupId: editingHosts.groupId,
+                    oldGroupId: editingHosts.oldGroupId
                 },
             });
         }
     }
 
-    __onItemClick (item) {
+    __onItemClick (item, e) {
         const { onItemClick } = this.props;
-        onItemClick && onItemClick(item);
+        onItemClick && onItemClick(item, e);
     }
 
     __onHostsDialogOKClick () {
@@ -42,26 +46,28 @@ class Sidebar extends Component {
         if (isAddingHosts && onAddHostsClick) {
             onAddHostsClick(nextHosts);
         } else if (isEditingHosts && onUpdateHostsClick) {
-            editingHosts.url = nextHosts.url.trim();
-            editingHosts.name = nextHosts.name.trim();
-            onUpdateHostsClick(editingHosts);
+            editingHosts.type = nextHosts.type && nextHosts.type.trim();
+            editingHosts.url = nextHosts.url && nextHosts.url.trim();
+            editingHosts.name = nextHosts.name && nextHosts.name.trim();
+            editingHosts.groupId = nextHosts.groupId && nextHosts.groupId.trim();
+            onUpdateHostsClick(editingHosts, nextHosts.oldGroupId && nextHosts.oldGroupId.trim());
         }
         this.setState({
             isAddingHosts: false,
             isEditingHosts: false,
-            nextHosts: { url: '', name: '' }
+            nextHosts: { type: '', url: '', name: '', groupId: '', oldGroupId: '' }
         });
     }
 
     __onHostsDialogAddClick () {
         this.setState({
             isAddingHosts: true,
-            nextHosts: { url: '', name: '' },
+            nextHosts: { type: '', url: '', name: '', groupId: '', oldGroupId: '' }
         });
     }
 
-    __onDialogInputChange (name, url) {
-        this.setState({ nextHosts: { name, url } });
+    __onDialogInputChange (type, name, url, groupId, oldGroupId) {
+        this.setState({ nextHosts: { type, name, url, groupId, oldGroupId } });
     }
 
     __onDialogDismiss () {
@@ -75,7 +81,7 @@ class Sidebar extends Component {
         this.setState({
             isAddingHosts: false,
             isEditingHosts: false,
-            nextHosts: { url: '', name: '' }
+            nextHosts: { type: '', url: '', name: '', groupId: '', oldGroupId: '' }
         });
     }
 
@@ -87,6 +93,20 @@ class Sidebar extends Component {
         const { activeUid, onItemEdit, onItemSync, onItemRemove, onItemStatusChange } = this.props;
         if (!item) {
             return null;
+        }
+        if (item.getChildren) {
+            const sidebarItems = item.getChildren().map((child, index) => {
+                return this.__renderSidebarItem(child);
+            });
+            return (<SidebarGroupItem
+                        item={ item }
+                        child={ sidebarItems }
+                        key={ item.uid }
+                        active={ activeUid === item.uid }
+                        onClick={ this.__onItemClick.bind(this, item) }
+                        onStatusChange={ onItemStatusChange.bind(null, item) }
+                        onEdit={ item.uid !== TOTAL_HOSTS_UID ? onItemEdit.bind(null, item) : null }
+                        onRemove={ item.uid !== TOTAL_HOSTS_UID ? onItemRemove.bind(null, item) : null }/>)
         }
         return (<SidebarItem
                     item={ item }
@@ -101,7 +121,7 @@ class Sidebar extends Component {
 
     render() {
         const { isAddingHosts, isEditingHosts } = this.state;
-        const { list, totalHosts, editingHosts, onSearchChange } = this.props;
+        const { list, groupList, totalHosts, editingHosts, onSearchChange } = this.props;
         const sidebarItems = list.map((item, index) => {
             return this.__renderSidebarItem(item);
         });
@@ -124,8 +144,11 @@ class Sidebar extends Component {
                     </div>
                     { isAddingHosts || isEditingHosts ?
                         <HostsInfoDialog
+                            groupList={ groupList }
+                            type={ editingHosts ? (editingHosts.getChildren ? 'group' : 'hosts') : '' }
                             url={ editingHosts ? editingHosts.url : '' }
                             name={ editingHosts ? editingHosts.name : '' }
+                            groupId={ editingHosts ? editingHosts.groupId : '' }
                             onDismiss={ this.__onDialogDismiss.bind(this) }
                             onHostDialogOK={ this.__onHostsDialogOKClick.bind(this) }
                             onInputChange={ this.__onDialogInputChange.bind(this) } /> : null }
@@ -135,6 +158,7 @@ class Sidebar extends Component {
 
 Sidebar.propTypes = {
     list: PropTypes.array,
+    groupList: PropTypes.array,
     onItemEdit: PropTypes.func,
     onItemClick: PropTypes.func,
     activeUid: PropTypes.string,
