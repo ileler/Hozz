@@ -59,7 +59,7 @@ class Manifest {
 
     getHostsGroupList () {
         return this.getHostsList().map((hosts) => {
-            return hosts.getChildren ? {key: hosts.uid, value: hosts.name} : null;
+            return !!hosts.getChildren ? {key: hosts.uid, value: hosts.name} : null;
         }).filter((hosts) => {
             return hosts;
         });
@@ -114,14 +114,14 @@ class Manifest {
         for (let hosts of this.getHostsList()) {
             if (!this.online) {
                 hosts.stashStatus();
-                if (hosts.getChildren) {
+                if (!!hosts.getChildren) {
                     hosts.getChildren().forEach((child) => {
                         child.stashStatus();
                     });
                 }
             } else {
                 hosts.popStatus();
-                if (hosts.getChildren) {
+                if (!!hosts.getChildren) {
                     hosts.getChildren().forEach((child) => {
                         child.popStatus();
                     });
@@ -129,7 +129,7 @@ class Manifest {
             }
             if (hosts.online) {
                 let temp = hosts;
-                if (hosts.getChildren) {
+                if (!!hosts.getChildren) {
                     temp = hosts.getActiveChild();
                     if (!temp)     continue;
                 }
@@ -158,8 +158,8 @@ class Manifest {
     toSimpleObject () {
         const __manifest = Object.assign({}, this);
         const simpleHosts = this.getHostsList().map((hosts) => {
-            if (hosts.getChildren) {
-                const __hosts = hosts.toObject();
+            if (!!hosts.getChildren) {
+                const __hosts = this.hostsToObject(hosts);
                 __hosts.hostsArray = hosts.getChildren().map((child) => {
                     return this.hostsToObject(child);
                 }) || [];
@@ -216,7 +216,7 @@ Manifest.loadFromDisk = () => {
             const hostsPromises = hosts.map((item) => {
                 const __hosts = item.hasOwnProperty("hostsArray") ? new HostsGroup(item) : new Hosts(item);
                 hostsMap.set(__hosts.uid, __hosts);
-                return __hosts.getChildren ? Promise.all(__hosts.getChildren().map((child) => {
+                return !!__hosts.getChildren ? Promise.all(__hosts.getChildren().map((child) => {
                     return child.load();
                 })) : __hosts.load();
             });

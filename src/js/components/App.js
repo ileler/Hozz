@@ -45,7 +45,7 @@ class App extends Component {
     componentDidMount () {
         const { manifest } = this.props;
         const updateRemoteHosts = manifest.getHostsList().map((hosts) => {
-            return hosts.getChildren ? hosts.getChildren().map((child) => {
+            return !!hosts.getChildren ? hosts.getChildren().map((child) => {
                 return child.updateFromUrl().then(() => {
                     this.__updateManifest(manifest);
                 });
@@ -100,7 +100,7 @@ class App extends Component {
         });
         for (let hosts of manifest.getHostsList()) {
             let subMenu = null;
-            if (hosts.getChildren) {
+            if (!!hosts.getChildren) {
                 subMenu = [];
                 hosts.getChildren().forEach((child) => {
                     subMenu.push({
@@ -148,7 +148,7 @@ class App extends Component {
     __updateHosts (groupId, uid, text) {
         const { manifest } = this.state;
         const hosts = manifest.getHostsByUid(uid, groupId);
-        if (uid !== TOTAL_HOSTS_UID && hosts) {
+        if (uid !== TOTAL_HOSTS_UID && hosts && !!!hosts.getChildren) {
             hosts.setText(text);
             hosts.save();
             manifest.commit();
@@ -158,9 +158,9 @@ class App extends Component {
 
     __onHostsClick (item, e) {
         e && e.stopPropagation && e.stopPropagation();
-        if (item.getChildren) {
+        if (!!item.getChildren) {
             const child = item.getActiveChild();
-            this.setState({ activeUid: child ? child.uid : item.uid, activeGroupId: item.groupId });
+            this.setState({ activeUid: child ? child.uid : item.uid, activeGroupId: child ? child.groupId : null });
         } else {
             this.setState({ activeUid: item.uid, activeGroupId: item.groupId });
         }
@@ -169,7 +169,7 @@ class App extends Component {
     __onHostsRemove (item, e) {
         e && e.stopPropagation && e.stopPropagation();
         const { manifest } = this.state;
-        if (item.getChildren) {
+        if (!!item.getChildren) {
             item.getChildren().forEach((hosts, index) => {
                 this.__onHostsRemove(hosts);
             });
@@ -199,7 +199,7 @@ class App extends Component {
                 } else {
                     let hosts = manifest.getHostsByUid(item.uid);
                     hosts.toggleStatus();
-                    if (hosts.getChildren) {
+                    if (!!hosts.getChildren) {
                         hosts.getChildren().forEach((child) => {
                             child.online = false;
                         });
@@ -333,13 +333,25 @@ class App extends Component {
         }
     }
 
+    searchList(hosts, searchText) {
+        if (!hosts) return false;
+        if (hosts.name.indexOf(searchText) > -1)    return true;
+        if (!!hosts.getChildren) {
+            let tempList = hosts.getChildren().filter((child) => {
+                return child.name.indexOf(searchText) > -1 || child.text.indexOf(searchText) > -1;
+            });
+            return tempList && tempList.length > 0;
+        }
+        return false;
+    }
+
     render() {
         const { snack, manifest, activeUid, activeGroupId, editingUid, editingGroupId, syncingUid, searchText } = this.state;
         let list = manifest ? manifest.getHostsList() : [];
         let groupList = manifest ? manifest.getHostsGroupList() : [];
         if (searchText) {
             list = list.filter((hosts) => {
-                return hosts.name.indexOf(searchText) > -1 || hosts.text.indexOf(searchText) > -1;
+                return this.searchList(hosts, searchText);
             });
         }
         let activeHosts = null;
@@ -354,12 +366,7 @@ class App extends Component {
         if (editingUid !== null) {
             editingHosts = manifest.getHostsByUid(editingUid, editingGroupId);
         }
-        let readOnly = false;
-        if (activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || activeHosts.url || activeHosts.getChildren)) {
-            readOnly = true;
-        } else {
-            readOnly = false;
-        }
+        let readOnly = !!activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || !!activeHosts.url || !!activeHosts.getChildren);
         return (<div>
                     <Dropzone
                         className="dropzone"

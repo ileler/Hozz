@@ -94,7 +94,7 @@ class Sidebar extends Component {
         if (!item) {
             return null;
         }
-        if (item.getChildren) {
+        if (!!item.getChildren) {
             const sidebarItems = item.getChildren().map((child, index) => {
                 return this.__renderSidebarItem(child);
             });
@@ -145,7 +145,7 @@ class Sidebar extends Component {
                     { isAddingHosts || isEditingHosts ?
                         <HostsInfoDialog
                             groupList={ groupList }
-                            type={ editingHosts ? (editingHosts.getChildren ? 'group' : 'hosts') : '' }
+                            type={ editingHosts ? (!!editingHosts.getChildren ? 'group' : 'hosts') : '' }
                             url={ editingHosts ? editingHosts.url : '' }
                             name={ editingHosts ? editingHosts.name : '' }
                             groupId={ editingHosts ? editingHosts.groupId : '' }
