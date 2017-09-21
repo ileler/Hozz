@@ -42,7 +42,7 @@ export default {
 
         'hosts_rules': '$$1 Rules',
 
-        'add_type_default': 'default',
+        'add_type_default': 'Default',
     },
     settings: {
         'import': 'Import',
