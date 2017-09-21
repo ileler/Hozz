@@ -34,7 +34,7 @@ class SidebarItem extends Component {
                             <span>{ Lang.get('main.hosts_rules', item.count) }</span>
                         </p>
                     </div>
-                    { !!item.url ? <i className="iconfont sync" onClick={ onSync }><Icon symbol="sync" title="同步"/></i> : null}
+                    { !!item.url ? <i className="iconfont sync" onClick={ onSync }><Icon symbol="sync" title={ Lang.get('common.sync') }/></i> : null}
                     { onEdit ? <i className="iconfont edit" onClick={ onEdit }>&#xe603;</i> : null }
                     { onRemove ? <i className="iconfont delete" onClick={ onRemove }>&#xe608;</i> : null }
                 </div>);

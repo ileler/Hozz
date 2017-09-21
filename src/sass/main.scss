@@ -472,6 +472,21 @@ button {
                     border-color: $color-theme;
                 }
             }
+            select {
+                padding-left: 4px;
+            }
+            .type-select {
+                margin: 5px 0px -5px 0px;
+                label {
+                    height: 20px;
+                    display: inline-block;
+                    input,span {
+                        height: 100%;
+                        vertical-align: top;
+                    }
+                    margin-right: 10px;
+                }
+            }
         }
     }
     .popover-arrow {

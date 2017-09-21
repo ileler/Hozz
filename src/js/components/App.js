@@ -366,7 +366,7 @@ class App extends Component {
         if (editingUid !== null) {
             editingHosts = manifest.getHostsByUid(editingUid, editingGroupId);
         }
-        let readOnly = !!activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || !!activeHosts.url || !!activeHosts.getChildren);
+        let readOnly = !!activeHosts && (TOTAL_HOSTS_UID === activeHosts.uid || !!activeHosts.url);
         return (<div>
                     <Dropzone
                         className="dropzone"
@@ -401,7 +401,7 @@ class App extends Component {
                                 actions={ snack.actions }
                                 onDismiss={ this.__onSnackDismiss.bind(this) } /> :
                             null }
-                        { activeHosts ?
+                        { activeHosts && !!!activeHosts.getChildren ?
                             <Editor
                                 uid={ activeUid }
                                 key={ activeUid }

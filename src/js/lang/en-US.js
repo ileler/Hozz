@@ -28,6 +28,8 @@ export default {
         'download_update_failed': 'Download update failed.',
         'cannot_find_core_package': 'Cannot find core package.',
         'go_to_homepage': 'Please go to $$1 to download latest release.',
+
+        'sync': 'Synchronize',
     },
     main: {
         'grant_permission': 'Grant Permission',
@@ -39,6 +41,8 @@ export default {
         'remote_source_url': 'Remote Source Url (Optional)',
 
         'hosts_rules': '$$1 Rules',
+
+        'add_type_default': 'default',
     },
     settings: {
         'import': 'Import',

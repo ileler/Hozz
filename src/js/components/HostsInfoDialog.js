@@ -59,14 +59,14 @@ class HostsInfoDialog extends Component {
                         </div>
                         <div className="vertical-inputs">
                             {!editing ?
-                                <div>
-                                    <span onClick={this.__onChangeType.bind(this, 'hosts')}><input type="radio" title="hosts" name="addType" onChange={this.__onChangeType.bind(this, 'hosts')} checked={ !type || type=='hosts' }/>hosts</span>
-                                    <span onClick={this.__onChangeType.bind(this, 'group')}><input type="radio" title="group" name="addType" onChange={this.__onChangeType.bind(this, 'group')} checked={ type=='group' }/>group</span>
+                                <div className="type-select">
+                                    <label onClick={this.__onChangeType.bind(this, 'hosts')}><input type="radio" title="hosts" name="addType" onChange={this.__onChangeType.bind(this, 'hosts')} checked={ !type || type=='hosts' }/>hosts</label>
+                                    <label onClick={this.__onChangeType.bind(this, 'group')}><input type="radio" title="group" name="addType" onChange={this.__onChangeType.bind(this, 'group')} checked={ type=='group' }/>group</label>
                                 </div>
                                 : null}
                             {!type || type == 'hosts' ?
                                 <select onChange={ this.__onGroupChange.bind(this) } defaultValue={groupId}>
-                                    <option value={ '' }>default</option>
+                                    <option value={ '' }>{ Lang.get('main.add_type_default') }</option>
                                     { groupItems }
                                 </select>
                                 : null}

@@ -28,6 +28,8 @@ export default {
         'download_update_failed': '下载更新失败。',
         'cannot_find_core_package': '无法找到核心更新包。',
         'go_to_homepage': '请前往$$1下载最新更新。',
+
+        'sync': '同步',
     },
     main: {
         'grant_permission': '授予权限',
@@ -39,6 +41,8 @@ export default {
         'remote_source_url': '远程Hosts地址（可选）',
 
         'hosts_rules': '$$1条记录',
+
+        'add_type_default': '默认',
     },
     settings: {
         'import': '导入',
