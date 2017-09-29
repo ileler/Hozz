@@ -32,13 +32,15 @@ const codemirrorOptions = {
     extraKeys: {
         "Ctrl-/": function(instance) {
             let doc = instance.doc;
-            let lineHandle = doc.getLineHandle(doc.getCursor().line);
+            var cursor = doc.getCursor();
+            let lineHandle = doc.getLineHandle(cursor.line);
             if (lineHandle.text.trim().startsWith("#")) {
                 lineHandle.text = lineHandle.text.trim().substring(1);
             } else {
                 lineHandle.text = '#' + lineHandle.text;
             }
-            instance.refresh();
+            doc.replaceRange(lineHandle.text, {line: cursor.line, ch: 0}, {line: cursor.line, ch: lineHandle.text.length});
+            doc.setCursor(cursor.line, lineHandle.text.length);
         }
     }
 };
